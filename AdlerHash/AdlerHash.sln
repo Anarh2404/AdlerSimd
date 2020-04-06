@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29926.136
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdlerHash", "AdlerHash\AdlerHash.csproj", "{DFF216DB-CCB3-416B-9A82-BE9C95CE3001}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdlerHash", "AdlerHash\AdlerHash.csproj", "{DFF216DB-CCB3-416B-9A82-BE9C95CE3001}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdlerHashTest", "AdlerHashTest\AdlerHashTest.csproj", "{30DA5629-49A3-48D3-A9A0-E4E68F4215D6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdlerHashTest", "AdlerHashTest\AdlerHashTest.csproj", "{30DA5629-49A3-48D3-A9A0-E4E68F4215D6}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmark", "Benchmark\Benchmark.csproj", "{AC87984D-9622-4572-A3B7-267CA60076FD}"
 EndProject

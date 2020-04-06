@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Text;
 
 namespace AdlerHash
 {
@@ -11,20 +9,21 @@ namespace AdlerHash
     {
         private const ulong MOD64 = 4294967291;
         private const uint NMAX64 = 363898415;
+        private const int MAXPART = 363898400;
         private const int BLOCK_SIZE = 32;
 
         public static ulong GetAdler64(ReadOnlySpan<byte> buffer, ulong adler = 1)
         {
-            ulong s1 = adler & 0xffff;
+            ulong s1 = adler & 0xffffffff;
             ulong s2 = adler >> 32;
             if (Ssse3.IsSupported)
             {
-                return GetAdler64Sse(buffer, s1, s2);
+                return GetSse(buffer, s1, s2);
             }
-            return GetAdler64Simple(buffer, s1, s2);
+            return GetSimpleOptimized(buffer, s1, s2);
         }
 
-        internal static ulong GetAdler64Simple(ReadOnlySpan<byte> buffer, ulong s1, ulong s2)
+        internal static ulong GetSimple(ReadOnlySpan<byte> buffer, ulong s1, ulong s2)
         {
             foreach (var n in buffer)
             {
@@ -35,7 +34,205 @@ namespace AdlerHash
             return (s2 << 32) | s1;
         }
 
-        internal unsafe static ulong GetAdler64Sse(ReadOnlySpan<byte> buffer, ulong s1, ulong s2)
+
+        internal static ulong GetSimpleOptimized(ReadOnlySpan<byte> buf, ulong adler, ulong sum2)
+        {
+            // Workaroud
+            // TODO: try to find the problem
+
+            if (buf.Length > MAXPART)
+            {
+                int parts = (buf.Length / MAXPART) + 1;
+                ulong result = 0;
+                for (int i = 0; i < parts; i++)
+                {
+                    var start = MAXPART * i;
+                    var count = Math.Min(buf.Length - start, MAXPART);
+                    var slice = buf.Slice(start, count);
+                    result = GetSimpleOptimizedInternal(slice, adler, sum2);
+                    adler = result & 0xffffffff;
+                    sum2 = result >> 32;
+                }
+
+                return result;
+            }
+
+            return GetSimpleOptimizedInternal(buf, adler, sum2);
+        }
+
+        internal static ulong GetSimpleOptimizedInternal(ReadOnlySpan<byte> buf, ulong adler, ulong sum2)
+        {
+            ulong n;
+            ulong len = (ulong)buf.Length;
+            if (len == 1)
+            {
+                adler += buf[0];
+                if (adler >= MOD64)
+                    adler -= MOD64;
+                sum2 += adler;
+                if (sum2 >= MOD64)
+                    sum2 -= MOD64;
+                return adler | (sum2 << 32);
+            }
+            var idx = 0;
+            if (len < 16)
+            {
+                while (len-- != 0)
+                {
+                    adler += buf[idx++];
+                    sum2 += adler;
+                }
+                if (adler >= MOD64)
+                    adler -= MOD64;
+                sum2 %= MOD64;           /* only added so many BASE's */
+                return adler | (sum2 << 32);
+            }
+
+            /* do length NMAX blocks -- requires just one modulo operation */
+
+            while (len >= NMAX64)
+            {
+                len -= NMAX64;
+                n = NMAX64 / 16;          /* NMAX is divisible by 16 */
+                do
+                {
+                    /* 16 sums unrolled */
+                    adler += buf[idx + 0];
+                    sum2 += adler;
+                    adler += buf[idx + 1];
+                    sum2 += adler;
+                    adler += buf[idx + 2];
+                    sum2 += adler;
+                    adler += buf[idx + 3];
+                    sum2 += adler;
+                    adler += buf[idx + 4];
+                    sum2 += adler;
+                    adler += buf[idx + 5];
+                    sum2 += adler;
+                    adler += buf[idx + 6];
+                    sum2 += adler;
+                    adler += buf[idx + 7];
+                    sum2 += adler;
+                    adler += buf[idx + 8];
+                    sum2 += adler;
+                    adler += buf[idx + 9];
+                    sum2 += adler;
+                    adler += buf[idx + 10];
+                    sum2 += adler;
+                    adler += buf[idx + 11];
+                    sum2 += adler;
+                    adler += buf[idx + 12];
+                    sum2 += adler;
+                    adler += buf[idx + 13];
+                    sum2 += adler;
+                    adler += buf[idx + 14];
+                    sum2 += adler;
+                    adler += buf[idx + 15];
+                    sum2 += adler;
+
+                    idx += 16;
+                } while (--n != 0);
+                adler %= MOD64;
+                sum2 %= MOD64;
+            }
+
+            /* do remaining bytes (less than NMAX, still just one modulo) */
+            if (len > 0)
+            {                  /* avoid modulos if none remaining */
+                while (len >= 16)
+                {
+                    len -= 16;
+                    /* 16 sums unrolled */
+                    adler += buf[idx + 0];
+                    sum2 += adler;
+                    adler += buf[idx + 1];
+                    sum2 += adler;
+                    adler += buf[idx + 2];
+                    sum2 += adler;
+                    adler += buf[idx + 3];
+                    sum2 += adler;
+                    adler += buf[idx + 4];
+                    sum2 += adler;
+                    adler += buf[idx + 5];
+                    sum2 += adler;
+                    adler += buf[idx + 6];
+                    sum2 += adler;
+                    adler += buf[idx + 7];
+                    sum2 += adler;
+                    adler += buf[idx + 8];
+                    sum2 += adler;
+                    adler += buf[idx + 9];
+                    sum2 += adler;
+                    adler += buf[idx + 10];
+                    sum2 += adler;
+                    adler += buf[idx + 11];
+                    sum2 += adler;
+                    adler += buf[idx + 12];
+                    sum2 += adler;
+                    adler += buf[idx + 13];
+                    sum2 += adler;
+                    adler += buf[idx + 14];
+                    sum2 += adler;
+                    adler += buf[idx + 15];
+                    sum2 += adler;
+                    idx += 16;
+                }
+                while (len-- != 0)
+                {
+                    adler += buf[idx++];
+                    sum2 += adler;
+                }
+                adler %= MOD64;
+                sum2 %= MOD64;
+            }
+
+            /* return recombined sums */
+            return adler | (sum2 << 32);
+        }
+
+        internal static ulong GetSse(ReadOnlySpan<byte> buf, ulong adler, ulong sum2)
+        {
+            // Workaroud
+            // TODO: try to find the problem
+
+            if (buf.Length <= MAXPART)
+            {
+                if (adler == 1 && sum2 == 0)
+                {
+                    return GetSseInternal(buf, adler, sum2);
+                }
+                return GetSimpleOptimizedInternal(buf, adler, sum2);
+            }
+
+            int parts = (buf.Length / MAXPART) + 1;
+            ulong result = 0;
+            int part = 0;
+            var slice = buf.Slice(0, MAXPART);
+
+            if (adler == 1 && sum2 == 0)
+            {
+                result = GetSseInternal(slice, adler, sum2);
+                adler = result & 0xffffffff;
+                sum2 = result >> 32;
+                part += 1;
+            }
+
+            for (; part < parts; part++)
+            {
+                var start = MAXPART * part;
+                var count = Math.Min(buf.Length - start, MAXPART);
+                slice = buf.Slice(start, count);
+                result = GetSimpleOptimizedInternal(slice, adler, sum2);
+                adler = result & 0xffffffff;
+                sum2 = result >> 32;
+            }
+
+            return result;
+        }
+
+
+
+        internal unsafe static ulong GetSseInternal(ReadOnlySpan<byte> buffer, ulong s1, ulong s2)
         {
             uint len = (uint)buffer.Length;
 
@@ -48,7 +245,7 @@ namespace AdlerHash
             Vector128<short> onesShort = Vector128.Create(1, 1, 1, 1, 1, 1, 1, 1);
             Vector128<int> onesInt = Vector128.Create(1, 1, 1, 1);
             Vector128<byte> shuffleMask2301 = Vector128.Create((byte)4, 5, 6, 7, 0, 1, 2, 3, 12, 13, 14, 15, 8, 9, 10, 11);
-            Vector128<byte> shuffleMask1032 = Vector128.Create((byte)8u, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7);
+            Vector128<byte> shuffleMask1032 = Vector128.Create((byte)8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7);
             Vector128<byte> shuffleMaskTrim = Vector128.Create(0, 1, 2, 3, 255, 255, 255, 255, 8, 9, 10, 11, 255, 255, 255, 255);
             // A B C D -> B A D C
             const int S2301 = 2 << 6 | 3 << 4 | 0 << 2 | 1;
@@ -60,7 +257,7 @@ namespace AdlerHash
 
                 while (blocks != 0)
                 {
-                    uint n = NMAX64;
+                    uint n = NMAX64 / BLOCK_SIZE;
                     if (n > blocks)
                     {
                         n = blocks;
@@ -76,7 +273,6 @@ namespace AdlerHash
 
                     do
                     {
-
                         // Load 32 input bytes.
                         Vector128<byte> bytes1 = Sse2.LoadVector128(&buf[0]);
                         Vector128<byte> bytes2 = Sse2.LoadVector128(&buf[16]);
@@ -91,9 +287,8 @@ namespace AdlerHash
                         // bytes by [ 32, 31, 30, ... ] for s2.
                         Vector128<ushort> sad1 = Sse2.SumAbsoluteDifferences(bytes1, zero);
                         v_s1 = Sse2.Add(v_s1, sad1.AsUInt64());
-
-                        Vector128<short> mad1 = Ssse3.MultiplyAddAdjacent(bytes1, tap1);
-                        Vector128<int> mad12 = Sse2.MultiplyAddAdjacent(mad1, onesShort);
+                        Vector128<short> mad11 = Ssse3.MultiplyAddAdjacent(bytes1, tap1);
+                        Vector128<int> mad12 = Sse2.MultiplyAddAdjacent(mad11, onesShort);
                         var mad121 = Sse2.Add(mad12, Sse2.Shuffle(mad12, S2301));
                         var madTrimmed1 = Ssse3.Shuffle(mad121.AsByte(), shuffleMaskTrim);
                         var madTimmed1ULong = madTrimmed1.AsUInt64();
@@ -103,7 +298,6 @@ namespace AdlerHash
 
                         Vector128<ushort> sad2 = Sse2.SumAbsoluteDifferences(bytes2, zero);
                         v_s1 = Sse2.Add(v_s1, sad2.AsUInt64());
-
                         Vector128<short> mad2 = Ssse3.MultiplyAddAdjacent(bytes2, tap2);
                         Vector128<int> mad22 = Sse2.MultiplyAddAdjacent(mad2, onesShort);
                         var mad221 = Sse2.Add(mad22, Sse2.Shuffle(mad22, S2301));

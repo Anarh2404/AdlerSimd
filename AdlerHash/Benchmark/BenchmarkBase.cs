@@ -10,7 +10,7 @@ namespace Benchmark
     {
         internal byte[] Data;
 
-        [Params(1024, 1024 * 1024, 1024 * 1024 * 1024)]
+        [Params(1024 * 1024, 256 * 1024 * 1024, 1024 * 1024 * 1024)]
         public int TestArrayLength { get; set; }
 
         [GlobalSetup]

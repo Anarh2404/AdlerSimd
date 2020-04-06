@@ -17,12 +17,12 @@ namespace AdlerHash
             uint s2 = adler >> 16;
             if (Ssse3.IsSupported)
             {
-                return GetAdler32Sse(buffer, s1, s2);
+                return GetSse(buffer, s1, s2);
             }
-            return GetAdler32Simple(buffer, s1, s2);
+            return GetSimpleOptimized(buffer, s1, s2);
         }
 
-        internal static uint GetAdler32Simple(ReadOnlySpan<byte> buffer, uint s1, uint s2)
+        internal static uint GetSimple(ReadOnlySpan<byte> buffer, uint s1, uint s2)
         {
             foreach (var n in buffer)
             {
@@ -33,7 +33,159 @@ namespace AdlerHash
             return (s2 << 16) | s1;
         }
 
-        internal static unsafe uint GetAdler32Sse(ReadOnlySpan<byte> buffer, uint s1, uint s2)
+        internal static uint GetSimpleOptimized(ReadOnlySpan<byte> buf, uint adler, uint sum2)
+        {
+            uint n;
+            uint len = (uint)buf.Length;
+            if (len == 1)
+            {
+                adler += buf[0];
+                if (adler >= MOD32)
+                    adler -= MOD32;
+                sum2 += adler;
+                if (sum2 >= MOD32)
+                    sum2 -= MOD32;
+                return adler | (sum2 << 16);
+            }
+            var idx = 0;
+            if (len < 16)
+            {
+                while (len-- != 0)
+                {
+                    adler += buf[idx++];
+                    sum2 += adler;
+                }
+                if (adler >= MOD32)
+                    adler -= MOD32;
+                sum2 = MOD28(sum2);            /* only added so many BASE's */
+                return adler | (sum2 << 16);
+            }
+
+            /* do length NMAX blocks -- requires just one modulo operation */
+
+            while (len >= NMAX32)
+            {
+                len -= NMAX32;
+                n = NMAX32 / 16;          /* NMAX is divisible by 16 */
+                do
+                {
+                    /* 16 sums unrolled */
+                    adler += buf[idx + 0];
+                    sum2 += adler;
+                    adler += buf[idx + 1];
+                    sum2 += adler;
+                    adler += buf[idx + 2];
+                    sum2 += adler;
+                    adler += buf[idx + 3];
+                    sum2 += adler;
+                    adler += buf[idx + 4];
+                    sum2 += adler;
+                    adler += buf[idx + 5];
+                    sum2 += adler;
+                    adler += buf[idx + 6];
+                    sum2 += adler;
+                    adler += buf[idx + 7];
+                    sum2 += adler;
+                    adler += buf[idx + 8];
+                    sum2 += adler;
+                    adler += buf[idx + 9];
+                    sum2 += adler;
+                    adler += buf[idx + 10];
+                    sum2 += adler;
+                    adler += buf[idx + 11];
+                    sum2 += adler;
+                    adler += buf[idx + 12];
+                    sum2 += adler;
+                    adler += buf[idx + 13];
+                    sum2 += adler;
+                    adler += buf[idx + 14];
+                    sum2 += adler;
+                    adler += buf[idx + 15];
+                    sum2 += adler;
+
+                    idx += 16;
+                } while (--n != 0);
+                adler = MOD(adler);
+                sum2 = MOD(sum2);
+            }
+
+            /* do remaining bytes (less than NMAX, still just one modulo) */
+            if (len > 0)
+            {                  /* avoid modulos if none remaining */
+                while (len >= 16)
+                {
+                    len -= 16;
+                    /* 16 sums unrolled */
+                    adler += buf[idx + 0];
+                    sum2 += adler;
+                    adler += buf[idx + 1];
+                    sum2 += adler;
+                    adler += buf[idx + 2];
+                    sum2 += adler;
+                    adler += buf[idx + 3];
+                    sum2 += adler;
+                    adler += buf[idx + 4];
+                    sum2 += adler;
+                    adler += buf[idx + 5];
+                    sum2 += adler;
+                    adler += buf[idx + 6];
+                    sum2 += adler;
+                    adler += buf[idx + 7];
+                    sum2 += adler;
+                    adler += buf[idx + 8];
+                    sum2 += adler;
+                    adler += buf[idx + 9];
+                    sum2 += adler;
+                    adler += buf[idx + 10];
+                    sum2 += adler;
+                    adler += buf[idx + 11];
+                    sum2 += adler;
+                    adler += buf[idx + 12];
+                    sum2 += adler;
+                    adler += buf[idx + 13];
+                    sum2 += adler;
+                    adler += buf[idx + 14];
+                    sum2 += adler;
+                    adler += buf[idx + 15];
+                    sum2 += adler;
+                    idx += 16;
+                }
+                while (len-- != 0)
+                {
+                    adler += buf[idx++];
+                    sum2 += adler;
+                }
+                adler = MOD(adler);
+                sum2 = MOD(sum2);
+            }
+
+            /* return recombined sums */
+            return adler | (sum2 << 16);
+        }
+
+        private static uint CHOP(uint a)
+        {
+            uint tmp =  a >> 16;
+            a &= 0xffffU;
+            a += (tmp << 4) - tmp;
+            return a;
+        }
+        private static uint MOD28(uint a)
+        {
+            a = CHOP(a);
+            if (a >= MOD32)
+                a -= MOD32;
+            return a;
+        }
+        private static uint MOD(uint a)
+        {
+            a = CHOP(a);
+            a = MOD28(a);
+            return a;
+        }
+
+
+        internal static unsafe uint GetSse(ReadOnlySpan<byte> buffer, uint s1, uint s2)
         {
             uint len = (uint)buffer.Length;
 
@@ -51,7 +203,7 @@ namespace AdlerHash
 
                 while (blocks != 0)
                 {
-                    uint n = NMAX32;
+                    uint n = NMAX32 / BLOCK_SIZE;
                     if (n > blocks)
                     {
                         n = blocks;
@@ -67,7 +219,6 @@ namespace AdlerHash
 
                     do
                     {
-
                         // Load 32 input bytes.
                         Vector128<byte> bytes1 = Sse2.LoadVector128(&buf[0]);
                         Vector128<byte> bytes2 = Sse2.LoadVector128(&buf[16]);
@@ -82,18 +233,15 @@ namespace AdlerHash
                         // bytes by [ 32, 31, 30, ... ] for s2.
                         Vector128<ushort> sad1 = Sse2.SumAbsoluteDifferences(bytes1, zero);
                         v_s1 = Sse2.Add(v_s1, sad1.AsUInt32());
-
-                        Vector128<short> mad1 = Ssse3.MultiplyAddAdjacent(bytes1, tap1);
-                        Vector128<int> mad12 = Sse2.MultiplyAddAdjacent(mad1, ones);
+                        Vector128<short> mad11 = Ssse3.MultiplyAddAdjacent(bytes1, tap1);
+                        Vector128<int> mad12 = Sse2.MultiplyAddAdjacent(mad11, ones);
                         v_s2 = Sse2.Add(v_s2, mad12.AsUInt32());
-
 
 
                         Vector128<ushort> sad2 = Sse2.SumAbsoluteDifferences(bytes2, zero);
                         v_s1 = Sse2.Add(v_s1, sad2.AsUInt32());
-
-                        Vector128<short> mad2 = Ssse3.MultiplyAddAdjacent(bytes2, tap2);
-                        Vector128<int> mad22 = Sse2.MultiplyAddAdjacent(mad2, ones);
+                        Vector128<short> mad21 = Ssse3.MultiplyAddAdjacent(bytes2, tap2);
+                        Vector128<int> mad22 = Sse2.MultiplyAddAdjacent(mad21, ones);
                         v_s2 = Sse2.Add(v_s2, mad22.AsUInt32());
 
                         buf += BLOCK_SIZE;
