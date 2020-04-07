@@ -318,7 +318,8 @@ namespace AdlerHash
                     s1 += v_s1.GetElement(0);
                     s1 += v_s1.GetElement(1);
 
-                    s2 += v_s2.GetElement(0);
+
+                    s2 = v_s2.GetElement(0);
                     s2 += v_s2.GetElement(1);
 
                     s1 %= MOD64;
