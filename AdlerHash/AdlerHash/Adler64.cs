@@ -190,49 +190,7 @@ namespace AdlerHash
             return adler | (sum2 << 32);
         }
 
-        internal static ulong GetSse(ReadOnlySpan<byte> buf, ulong adler, ulong sum2)
-        {
-            // Workaroud
-            // TODO: try to find the problem
-
-            if (buf.Length <= MAXPART)
-            {
-                if (adler == 1 && sum2 == 0)
-                {
-                    return GetSseInternal(buf, adler, sum2);
-                }
-                return GetSimpleOptimizedInternal(buf, adler, sum2);
-            }
-
-            int parts = (buf.Length / MAXPART) + 1;
-            ulong result = 0;
-            int part = 0;
-            var slice = buf.Slice(0, MAXPART);
-
-            if (adler == 1 && sum2 == 0)
-            {
-                result = GetSseInternal(slice, adler, sum2);
-                adler = result & 0xffffffff;
-                sum2 = result >> 32;
-                part += 1;
-            }
-
-            for (; part < parts; part++)
-            {
-                var start = MAXPART * part;
-                var count = Math.Min(buf.Length - start, MAXPART);
-                slice = buf.Slice(start, count);
-                result = GetSimpleOptimizedInternal(slice, adler, sum2);
-                adler = result & 0xffffffff;
-                sum2 = result >> 32;
-            }
-
-            return result;
-        }
-
-
-
-        internal unsafe static ulong GetSseInternal(ReadOnlySpan<byte> buffer, ulong s1, ulong s2)
+        internal unsafe static ulong GetSse(ReadOnlySpan<byte> buffer, ulong s1, ulong s2)
         {
             uint len = (uint)buffer.Length;
 
