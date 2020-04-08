@@ -17,7 +17,7 @@ namespace Benchmark
             return AdlerHash.Adler32.GetSimpleOptimized(Data, 1, 0);
         }
 
-        [Benchmark(Baseline = true)]
+        [Benchmark]
         public uint Adler32Sse()
         {
             return AdlerHash.Adler32.GetSse(Data, 1, 0);
