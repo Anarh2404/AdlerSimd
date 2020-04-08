@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Text;
 using Xunit;
 
 namespace AdlerHashTest
@@ -130,5 +131,65 @@ namespace AdlerHashTest
 
             Assert.Equal(result, sseHash2);
         }
+
+
+        [Fact]
+        public void Test()
+        {
+            var d1 = Encoding.UTF8.GetBytes("Hello ");
+            var d2 = Encoding.UTF8.GetBytes("World! ");
+            var d3 = Encoding.UTF8.GetBytes("This is ");
+            var d4 = Encoding.UTF8.GetBytes("Me.");
+
+            var arr = new[] { d1, d2, d3, d4 };
+
+            ulong s1 = 1;
+            ulong s2 = 0;
+            ulong result1 = 0;
+            foreach (var data in arr)
+            {
+                result1 = AdlerHash.Adler64.GetSse(data, s1, s2);
+                s1 = result1 & 0xffffffff;
+                s2 = result1 >> 32;
+            }
+
+            var allInOne = arr.SelectMany(itr => itr).ToArray();
+            var allInOneFromStr = Encoding.UTF8.GetBytes("Hello World! This is Me.");
+            Assert.Equal(allInOne, allInOneFromStr);
+
+            var result2 = AdlerHash.Adler64.GetSse(allInOne, 1, 0);
+
+            Assert.Equal(result1, result2);
+        }
+
+
+
+        //[Test]
+        //public void Test()
+        //{
+        //    var d1 = Encoding.UTF8.GetBytes("Hello ");
+        //    var d2 = Encoding.UTF8.GetBytes("World! ");
+        //    var d3 = Encoding.UTF8.GetBytes("This is ");
+        //    var d4 = Encoding.UTF8.GetBytes("Me.");
+
+        //    var arr = new[] { d1, d2, d3, d4 };
+
+        //    var adlerChanked = HashAlgorithmsFactory.CreateAdlerHash(string.Empty);
+        //    foreach (var data in arr)
+        //    {
+        //        adlerChanked.Compute(data);
+        //    }
+
+        //    var allInOne = arr.SelectMany(itr => itr).ToArray();
+        //    var allInOneFromStr = Encoding.UTF8.GetBytes("Hello World! This is Me.");
+        //    Assert.AreEqual(allInOne, allInOneFromStr);
+
+        //    var adlerOne = HashAlgorithmsFactory.CreateAdlerHash(string.Empty);
+        //    adlerOne.Compute(allInOne);
+
+        //    Assert.AreEqual(adlerChanked.Hash, adlerOne.Hash, Encoding.UTF8.GetString(allInOne));
+
+
+        //}
     }
 }

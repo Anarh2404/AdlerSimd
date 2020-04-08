@@ -6,7 +6,7 @@ namespace Benchmark
     {
         public static void Main(string[] args)
         {
-            var summary = BenchmarkRunner.Run<Adler64Benchmark>();
+            var summary = BenchmarkRunner.Run<Adler32Benchmark>();
         }
     }
 }
