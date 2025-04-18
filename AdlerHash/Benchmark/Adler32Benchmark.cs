@@ -1,26 +1,31 @@
 ﻿using BenchmarkDotNet.Attributes;
 
-namespace Benchmark
+namespace Benchmark;
+
+[MarkdownExporter]
+public class Adler32Benchmark : BenchmarkBase
 {
-    [MarkdownExporter]
-    public class Adler32Benchmark : BenchmarkBase
+    [Benchmark (Baseline = true)]
+    public uint Adler32Simple()
     {
-        [Benchmark (Baseline = true)]
-        public uint Adler32Simple()
-        {
-            return AdlerHash.Adler32.GetSimple(Data, 1, 0);
-        }
+        return AdlerHash.Adler32.GetSimple(Data, 1, 0);
+    }
 
-        [Benchmark]
-        public uint Adler32Optimized()
-        {
-            return AdlerHash.Adler32.GetSimpleOptimized(Data, 1, 0);
-        }
+    [Benchmark]
+    public uint Adler32Optimized()
+    {
+        return AdlerHash.Adler32.GetSimpleOptimized(Data, 1, 0);
+    }
 
-        [Benchmark]
-        public uint Adler32Sse()
-        {
-            return AdlerHash.Adler32.GetSse(Data, 1, 0);
-        }
+    // [Benchmark]
+    // public uint Adler32Sse()
+    // {
+    //     return AdlerHash.Adler32.GetSse(Data, 1, 0);
+    // }
+        
+    [Benchmark]
+    public uint Adler32Vectorized()
+    {
+        return AdlerHash.Adler32.GetVectorized(Data, 1, 0);
     }
 }
