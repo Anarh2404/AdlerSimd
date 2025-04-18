@@ -10,7 +10,7 @@ public static partial class Adler32
     private const uint NMAX32 = 5552;
     private const int BLOCK_SIZE = 32;
 
-    public static uint GetAdler32(ReadOnlySpan<byte> buffer, uint adler = 1)
+    public static uint Compute(ReadOnlySpan<byte> buffer, uint adler = 1)
     {
         uint s1 = adler & 0xffff;
         uint s2 = adler >> 16;
@@ -18,7 +18,6 @@ public static partial class Adler32
         {
             return GetSse(buffer, s1, s2);
         }
-
         if (Vector.IsHardwareAccelerated)
         {
             return GetVectorized(buffer, s1, s2);

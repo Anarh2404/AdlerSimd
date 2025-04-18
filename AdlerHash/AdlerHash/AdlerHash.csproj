@@ -27,6 +27,18 @@
     <Compile Update="Adler32.Vector.cs">
       <DependentUpon>Adler32.cs</DependentUpon>
     </Compile>
+    <Compile Update="Adler64.Optimized.cs">
+      <DependentUpon>Adler64.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Adler64.Simple.cs">
+      <DependentUpon>Adler64.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Adler64.Sse.cs">
+      <DependentUpon>Adler64.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Adler64.Vector.cs">
+      <DependentUpon>Adler64.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
 
 </Project>
