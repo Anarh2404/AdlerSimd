@@ -14,4 +14,19 @@
     </AssemblyAttribute>
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Update="Adler32.Optimized.cs">
+      <DependentUpon>Adler32.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Adler32.Simple.cs">
+      <DependentUpon>Adler32.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Adler32.Sse.cs">
+      <DependentUpon>Adler32.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Adler32.Vector.cs">
+      <DependentUpon>Adler32.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
 </Project>
