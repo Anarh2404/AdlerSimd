@@ -11,8 +11,8 @@ public static partial class Adler32
     internal static uint GetVectorized(ReadOnlySpan<byte> data, uint s1, uint s2)
     {
         // маленькие буферы или отсутствие SIMD → скалярно
-        if (!Vector.IsHardwareAccelerated || data.Length < Vector<byte>.Count * 2)
-            return ComputeScalar(data, 1, 0);
+        if (data.Length < Vector<byte>.Count * 2)
+            return GetSimpleOptimized(data, 1, 0);
 
         int vecBytes = Vector<byte>.Count; // 16 (SSE2) / 32 (AVX2) / 64 (AVX‑512 / NEON)
         int lanesU32 = Vector<uint>.Count; //  4 / 8 / 16
@@ -99,18 +99,5 @@ public static partial class Adler32
         uint s = 0;
         for (int i = 0; i < Vector<uint>.Count; i++) s += v[i];
         return s;
-    }
-
-    private static uint ComputeScalar(ReadOnlySpan<byte> buf, uint a, uint b)
-    {
-        foreach (byte t in buf)
-        {
-            a += t;
-            b += a;
-            if (a >= MOD32) a -= MOD32;
-            if (b >= MOD32) b -= MOD32;
-        }
-
-        return (b << 16) | a;
     }
 }
