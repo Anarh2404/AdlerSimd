@@ -5,39 +5,40 @@ namespace AdlerHash;
 
 public static partial class Adler64
 {
-    private const int   NMAX      = 5_552;           // zlib‑совместимый лимит
+    private const int NMAX = 5_552;           // zlib-compatible limit
 
     public static ulong GetVectorized(ReadOnlySpan<byte> data, ulong s1, ulong s2)
     {
-        // маленькие буферы или нет SIMD → скалярно
+        // small buffers or no SIMD → scalar
         if (data.Length < Vector<byte>.Count * 2)
             return GetSimpleOptimized(data, 1, 0);
 
         int vecBytes = Vector<byte>.Count;           // 16 / 32 / 64
         int lanesU32 = Vector<uint>.Count;           // 4  / 8  / 16
-        int groups   = vecBytes / lanesU32;          // всегда 4
+        int groups = vecBytes / lanesU32;          // always 4
 
-        // константа 0,1,2,… (uint) для вычисления весов
+        // constant 0,1,2,… (uint) for weight calculation
         var inc = new Vector<uint>[groups];
         for (int g = 0; g < groups; g++)
         {
             uint[] tmp = new uint[lanesU32];
-            for (int i = 0; i < lanesU32; i++) tmp[i] = (uint)(g * lanesU32 + i);
+            for (int i = 0; i < lanesU32; i++)
+                tmp[i] = (uint)(g * lanesU32 + i);
             inc[g] = new Vector<uint>(tmp);
         }
-        
-        int   off = 0, left = data.Length;
+
+        int off = 0, left = data.Length;
 
         while (left > 0)
         {
-            int blkLen    = Math.Min(left, NMAX);
+            int blkLen = Math.Min(left, NMAX);
             int bytesLeft = blkLen;
-            ulong aPrev   = s1;
+            ulong aPrev = s1;
 
-            Vector<uint> vSum = Vector<uint>.Zero;   // ∑ bytes  (uint в SIMD)
+            Vector<uint> vSum = Vector<uint>.Zero;   // ∑ bytes  (uint in SIMD)
             Vector<uint> vWgt = Vector<uint>.Zero;   // ∑ bytes·w
 
-            // ───── SIMD‑ядро ───────────────────────────────────────────────
+            // ───── SIMD core ───────────────────────────────────────────────
             while (bytesLeft >= vecBytes)
             {
                 var vb = new Vector<byte>(data.Slice(off, vecBytes));
@@ -57,11 +58,11 @@ public static partial class Adler64
                       + u2 * (baseVec - inc[2])
                       + u3 * (baseVec - inc[3]);
 
-                off       += vecBytes;
+                off += vecBytes;
                 bytesLeft -= vecBytes;
             }
 
-            // ───── хвост блока (< vecBytes) ───────────────────────────────
+            // ───── block tail (< vecBytes) ───────────────────────────────
             ulong tailSum = 0, tailWgt = 0;
             for (int i = 0; i < bytesLeft; i++)
             {
@@ -83,14 +84,14 @@ public static partial class Adler64
             left -= blkLen;
         }
 
-        return (s2 << 32) | s1;               // B старшие, A младшие 32 бита
+        return (s2 << 32) | s1;               // B high, A low 32 bits
     }
 
-    // ───────────────── helpers ────────────────────────────────────────────
     private static ulong Horizontal(in Vector<uint> v)
     {
         ulong s = 0;
-        for (int i = 0; i < Vector<uint>.Count; i++) s += v[i];
+        for (int i = 0; i < Vector<uint>.Count; i++)
+            s += v[i];
         return s;
     }
 }
